@@ -123,16 +123,15 @@ function Pokeio() {
     };
 
     self.request.post(options, function (err, response, body) {
-      if (err)
-      {
+      if (err) {
         return callback(new Error('Error'));
       }
-      
+
       if (response === undefined || body === undefined) {
         console.error('[!] RPC Server offline');
         return callback(new Error('RPC Server offline'));
       }
-      
+
       var f_ret;
       try {
         f_ret = ResponseEnvelop.decode(body);
@@ -169,15 +168,26 @@ function Pokeio() {
           return callback(err);
         }
         // Getting api endpoint
-        self.GetApiEndpoint(function (err, api_endpoint) {
-          if (err) {
-            return callback(err);
-          }
-          callback(null);
+        self.GetApiEndpoint(function(err, api_endpoint){
+            self.GetApiEndpointCallback(err,api_endpoint,callback);
         });
       });
     });
   };
+
+self.GetApiEndpointCallback = function (err, api_endpoint, callback) {
+    if (err) {
+        if(err === 'NULL_END_POINT'){
+            // Getting api endpoint
+            self.GetApiEndpoint(function(err, api_endpoint){
+                self.GetApiEndpointCallback(err,api_endpoint,callback);
+            });
+            return;
+        }
+      return callback(err);
+    }
+    callback(null);
+};
 
   self.GetAccessToken = function (user, pass, callback) {
     self.DebugPrint('[i] Logging with user: ' + user);
@@ -210,6 +220,10 @@ function Pokeio() {
     api_req(api_url, self.playerInfo.accessToken, req, function (err, f_ret) {
       if (err) {
         return callback(err);
+      }
+      if(!f_ret.api_url){
+          self.DebugPrint('[i] API End Point is NULL - retrying');
+          return callback('NULL_END_POINT');
       }
       var api_endpoint = 'https://' + f_ret.api_url + '/rpc';
       self.playerInfo.apiEndpoint = api_endpoint;
@@ -310,12 +324,14 @@ function Pokeio() {
         return callback('No result');
       }
 
+      var dErr, response;
       try {
         var fortSearchResponse = ResponseEnvelop.FortDetailsResponse.decode(f_ret.payload[0]);
         callback(null, fortSearchResponse);
       } catch (err) {
-        callback(err, null);
+        dErr = err;
       }
+      callback(err, response);
     });
   };
 
@@ -338,12 +354,14 @@ function Pokeio() {
         return callback('No result');
       }
 
+      var dErr, response;
       try {
         var fortSearchResponse = ResponseEnvelop.FortSearchResponse.decode(f_ret.payload[0]);
         callback(null, fortSearchResponse);
       } catch (err) {
-        callback(err, null);
+        dErr = err;
       }
+      callback(err, response);
     });
   };
 
@@ -364,12 +382,14 @@ function Pokeio() {
       } else if (!f_ret || !f_ret.payload || !f_ret.payload[0]) {
         return callback('No result');
       }
+
+      var dErr, response;
       try {
-        var catchPokemonResponse = ResponseEnvelop.EvolvePokemonResponse.decode(f_ret.payload[0]);
-        callback(null, catchPokemonResponse);
+        response = ResponseEnvelop.EvolvePokemonResponse.decode(f_ret.payload[0]);
       } catch (err) {
-        callback(err, null);
+        dErr = err;
       }
+      callback(err, response);
     });
   };
 
@@ -390,12 +410,14 @@ function Pokeio() {
       } else if (!f_ret || !f_ret.payload || !f_ret.payload[0]) {
         return callback('No result');
       }
+
+      var dErr, response;
       try {
-        var catchPokemonResponse = ResponseEnvelop.TransferPokemonResponse.decode(f_ret.payload[0]);
-        callback(null, catchPokemonResponse);
+        response = ResponseEnvelop.TransferPokemonResponse.decode(f_ret.payload[0]);
       } catch (err) {
-        callback(err, null);
+        dErr = err;
       }
+      callback(err, response);
     });
   };
 
@@ -423,12 +445,15 @@ function Pokeio() {
       } else if (!f_ret || !f_ret.payload || !f_ret.payload[0]) {
         return callback('No result');
       }
+
+      var dErr, response;
       try {
-        var catchPokemonResponse = ResponseEnvelop.CatchPokemonResponse.decode(f_ret.payload[0]);
-        callback(null, catchPokemonResponse);
+        response = ResponseEnvelop.CatchPokemonResponse.decode(f_ret.payload[0]);
       } catch (err) {
-        callback(err, null);
+        dErr = err;
       }
+      callback(err, response);
+
     });
   };
 
@@ -455,12 +480,15 @@ function Pokeio() {
         return callback('No result');
       }
 
+      var dErr, response;
       try {
         var encounterPokemonResponse = ResponseEnvelop.EncounterResponse.decode(f_ret.payload[0]);
         callback(null, encounterPokemonResponse);
       } catch (err) {
-        callback(err, null);
+        dErr = err;
       }
+      callback(err, response);
+
     });
   };
 
@@ -508,12 +536,14 @@ function Pokeio() {
       } else if (!f_ret || !f_ret.payload || !f_ret.payload[0]) {
         return callback('No result');
       }
+
+      var dErr, response;
       try {
-        var releasePokemonResponse = ResponseEnvelop.ReleasePokemonResponse.decode(f_ret.payload[0]);
-        callback(null, releasePokemonResponse);
+        response = ResponseEnvelop.ReleasePokemonResponse.decode(f_ret.payload[0]);
       } catch (err) {
-        callback(err, null);
+        dErr = err;
       }
+      callback(err, response);
     });
 
   };
