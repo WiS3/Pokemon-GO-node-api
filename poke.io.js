@@ -168,15 +168,26 @@ function Pokeio() {
           return callback(err);
         }
         // Getting api endpoint
-        self.GetApiEndpoint(function (err, api_endpoint) {
-          if (err) {
-            return callback(err);
-          }
-          callback(null);
+        self.GetApiEndpoint(function(err, api_endpoint){
+            self.GetApiEndpointCallback(err,api_endpoint,callback);
         });
       });
     });
   };
+
+self.GetApiEndpointCallback = function (err, api_endpoint, callback) {
+    if (err) {
+        if(err === 'NULL_END_POINT'){
+            // Getting api endpoint
+            self.GetApiEndpoint(function(err, api_endpoint){
+                self.GetApiEndpointCallback(err,api_endpoint,callback);
+            });
+            return;
+        }
+      return callback(err);
+    }
+    callback(null);
+};
 
   self.GetAccessToken = function (user, pass, callback) {
     self.DebugPrint('[i] Logging with user: ' + user);
@@ -209,6 +220,10 @@ function Pokeio() {
     api_req(api_url, self.playerInfo.accessToken, req, function (err, f_ret) {
       if (err) {
         return callback(err);
+      }
+      if(!f_ret.api_url){
+          self.DebugPrint('[i] API End Point is NULL - retrying');
+          return callback('NULL_END_POINT');
       }
       var api_endpoint = 'https://' + f_ret.api_url + '/rpc';
       self.playerInfo.apiEndpoint = api_endpoint;
