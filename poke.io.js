@@ -309,13 +309,13 @@ self.GetApiEndpointCallback = function (err, api_endpoint, callback) {
 
   // Still WIP
   self.GetFortDetails = function (fortid, fortlat, fortlong, callback) {
-    var FortMessage = new RequestEnvelop.FortDetailsRequest({
+    var fortDetailsMessage = new RequestEnvelop.FortDetailsRequest({
       'fort_id': fortid,
       'fort_latitude': fortlat,
       'fort_longitude': fortlong
     });
 
-    var req = new RequestEnvelop.Requests(104, FortMessage.encode().toBuffer());
+    var req = new RequestEnvelop.Requests(104, fortDetailsMessage.encode().toBuffer());
 
     api_req(self.playerInfo.apiEndpoint, self.playerInfo.accessToken, req, function (err, f_ret) {
       if (err) {
@@ -326,7 +326,8 @@ self.GetApiEndpointCallback = function (err, api_endpoint, callback) {
 
       var dErr, response;
       try {
-        response = ResponseEnvelop.FortDetailsResponse.decode(f_ret.payload[0]);
+        var fortSearchResponse = ResponseEnvelop.FortDetailsResponse.decode(f_ret.payload[0]);
+        callback(null, fortSearchResponse);
       } catch (err) {
         dErr = err;
       }
@@ -336,7 +337,7 @@ self.GetApiEndpointCallback = function (err, api_endpoint, callback) {
 
   // Still WIP
   self.GetFort = function (fortid, fortlat, fortlong, callback) {
-    var FortMessage = new RequestEnvelop.FortSearchMessage({
+    var fortSearchMessage = new RequestEnvelop.FortSearchMessage({
       'fort_id': fortid,
       'player_latitude': self.playerInfo.latitude,
       'player_longitude': self.playerInfo.longitude,
@@ -344,7 +345,7 @@ self.GetApiEndpointCallback = function (err, api_endpoint, callback) {
       'fort_longitude': fortlong
     });
 
-    var req = new RequestEnvelop.Requests(101, FortMessage.encode().toBuffer());
+    var req = new RequestEnvelop.Requests(101, fortSearchMessage.encode().toBuffer());
 
     api_req(self.playerInfo.apiEndpoint, self.playerInfo.accessToken, req, function (err, f_ret) {
       if (err) {
@@ -355,7 +356,8 @@ self.GetApiEndpointCallback = function (err, api_endpoint, callback) {
 
       var dErr, response;
       try {
-        response = ResponseEnvelop.FortSearchResponse.decode(f_ret.payload[0]);
+        var fortSearchResponse = ResponseEnvelop.FortSearchResponse.decode(f_ret.payload[0]);
+        callback(null, fortSearchResponse);
       } catch (err) {
         dErr = err;
       }
@@ -396,11 +398,11 @@ self.GetApiEndpointCallback = function (err, api_endpoint, callback) {
     var apiEndpoint = _self$playerInfo3.apiEndpoint;
     var accessToken = _self$playerInfo3.accessToken;
 
-    var evolvePokemon = new RequestEnvelop.TransferPokemonMessage({
+    var transferPokemon = new RequestEnvelop.TransferPokemonMessage({
       'PokemonId': pokemonId
     });
 
-    var req = new RequestEnvelop.Requests(112, evolvePokemon.encode().toBuffer());
+    var req = new RequestEnvelop.Requests(112, transferPokemon.encode().toBuffer());
 
     api_req(apiEndpoint, accessToken, req, function (err, f_ret) {
       if (err) {
@@ -480,7 +482,8 @@ self.GetApiEndpointCallback = function (err, api_endpoint, callback) {
 
       var dErr, response;
       try {
-        response = ResponseEnvelop.EncounterResponse.decode(f_ret.payload[0]);
+        var encounterPokemonResponse = ResponseEnvelop.EncounterResponse.decode(f_ret.payload[0]);
+        callback(null, encounterPokemonResponse);
       } catch (err) {
         dErr = err;
       }
@@ -510,8 +513,8 @@ self.GetApiEndpointCallback = function (err, api_endpoint, callback) {
         return callback('No result');
       }
 
-      var catchPokemonResponse = ResponseEnvelop.RecycleInventoryItemResponse.decode(f_ret.payload[0]);
-      callback(null, catchPokemonResponse);
+      var dropItemResponse = ResponseEnvelop.RecycleInventoryItemResponse.decode(f_ret.payload[0]);
+      callback(null, dropItemResponse);
     });
   };
 
