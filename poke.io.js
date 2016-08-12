@@ -18,7 +18,7 @@ var events = require('events');
 var ProtoBuf = require('protobufjs');
 var GoogleOAuth = require('gpsoauthnode');
 var fs = require('fs');
-var s2 = require('s2geometry-node');
+var S2 = require('s2-geometry').S2;
 
 var Logins = require('./logins');
 
@@ -35,6 +35,7 @@ var RequestEnvelop = pokemonProto.RequestEnvelop;
 var ResponseEnvelop = pokemonProto.ResponseEnvelop;
 var Signature = pokemonProto.Signature;
 var pokemonlist = JSON.parse(fs.readFileSync(__dirname + '/pokemons.json', 'utf8'));
+var itemlist = JSON.parse(fs.readFileSync(__dirname + '/items.json', 'utf8'));
 
 var EventEmitter = events.EventEmitter;
 
@@ -49,17 +50,18 @@ function GetCoords(self) {
 }
 
 function getNeighbors(lat, lng) {
-  var origin = new s2.S2CellId(new s2.S2LatLng(lat, lng)).parent(15);
-  var walk = [origin.id()];
+  var level = 15;
+  var origin = S2.latLngToKey(lat, lng, level);
+  var walk = [ S2.keyToId(origin) ];
   // 10 before and 10 after
-  var next = origin.next();
-  var prev = origin.prev();
+  var next = S2.nextKey(origin);
+  var prev = S2.prevKey(origin);
   for (var i = 0; i < 10; i++) {
     // in range(10):
-    walk.push(prev.id());
-    walk.push(next.id());
-    next = next.next();
-    prev = prev.prev();
+    walk.push(S2.toId(prev));
+    walk.push(S2.toId(next));
+    next = S2.nextKey(next);
+    prev = S2.prevKey(prev);
   }
   return walk;
 }
@@ -75,6 +77,7 @@ function Pokeio() {
   self.google = new GoogleOAuth();
 
   self.pokemonlist = pokemonlist.pokemon;
+  self.itemlist = itemlist.items;
 
   self.playerInfo = {
     accessToken: '',
@@ -84,7 +87,8 @@ function Pokeio() {
     altitude: 0,
     locationName: '',
     provider: '',
-    apiEndpoint: ''
+    apiEndpoint: '',
+    device_info: null
   };
 
   self.DebugPrint = function (str) {
@@ -139,6 +143,33 @@ function Pokeio() {
         var reqHash = pogoSignature.utils.hashRequest(authTicketEncoded, request.encode().toBuffer()).toString();
         var hash = require('long').fromString(reqHash, true, 10);
         signature.request_hash.push(hash);
+      });
+
+      // Simulate real device
+      // add  condition
+      if( self.playerInfo.device_info !== null ) {
+          signature.device_info = new Signature.DeviceInfo({
+            device_id: self.playerInfo.device_info.device_id,
+            android_board_name: self.playerInfo.device_info.android_board_name,
+            android_bootloader: self.playerInfo.device_info.android_bootloader,
+            device_brand: self.playerInfo.device_info.device_brand,
+            device_model: self.playerInfo.device_info.device_model,
+            device_model_identifier: self.playerInfo.device_info.device_model_identifier,
+            device_model_boot: self.playerInfo.device_info.device_model_boot,
+            hardware_manufacturer: self.playerInfo.device_info.hardware_manufacturer,
+            hardware_model: self.playerInfo.device_info.hardware_model,
+            firmware_brand: self.playerInfo.device_info.firmware_brand,
+            firmware_tags: self.playerInfo.device_info.firmware_tags,
+            firmware_type: self.playerInfo.device_info.firmware_type,
+            firmware_fingerprint: self.playerInfo.device_info.firmware_fingerprint
+          });
+     }
+
+      signature.location_fix = new Signature.LocationFix({
+        provider: "network",
+        timestamp_since_start: (new Date().getTime() - self.playerInfo.initTime),
+        provider_status: 3,
+        location_type: 1
       });
 
       var iv = crypto.randomBytes(32);
@@ -321,11 +352,34 @@ self.GetApiEndpointCallback = function (err, api_endpoint, callback) {
 
       callback(dErr, response);
 
-      if (response)
-      if (response.username) {
+      if (response && response.username) {
         self.DebugPrint('[i] Logged in!');
       }
 
+    });
+  };
+
+  self.GetJournal = function (callback) {
+    var req = new RequestEnvelop.Requests(801);
+
+    var _self$playerInfo6 = self.playerInfo;
+    var apiEndpoint = _self$playerInfo6.apiEndpoint;
+    var accessToken = _self$playerInfo6.accessToken;
+
+    api_req(apiEndpoint, accessToken, req, function (err, f_ret) {
+      if (err) {
+        return callback(err);
+      } else if (!f_ret || !f_ret.payload || !f_ret.payload[0]) {
+        return callback('No result');
+      }
+
+      var dErr, journal;
+      try {
+        journal = ResponseEnvelop.ActionLogResponse.decode(f_ret.payload[0]);
+      } catch (err) {
+        dErr = err;
+      }
+      callback(dErr, journal);
     });
   };
 
@@ -532,8 +586,8 @@ self.GetApiEndpointCallback = function (err, api_endpoint, callback) {
 
   self.RenamePokemon = function(pokemonId, nickname, callback) {
     var renamePokemonMessage = new RequestEnvelop.NicknamePokemonMessage({
-        'pokemon_id': pokemonId,
-        'nickname': nickname,
+      'pokemon_id': pokemonId,
+      'nickname': nickname,
     });
 
     var req = new RequestEnvelop.Requests(149, renamePokemonMessage.encode().toBuffer());
@@ -829,6 +883,12 @@ self.GetApiEndpointCallback = function (err, api_endpoint, callback) {
       }]));
     }
   };
+
+  // Set device info for uk6
+  self.SetDeviceInfo = function(devInfo) {
+    self.playerInfo.device_info = devInfo;
+  };
+
 }
 
 module.exports = new Pokeio();
